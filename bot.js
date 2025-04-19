@@ -1,20 +1,18 @@
-require('dotenv').config();
-const { Telegraf, Markup } = require('telegraf');
-const { MongoClient } = require('mongodb');
-const http = require('http');
-let PLimit;
-import('p-limit').then(module => {
-  PLimit = module.default;
-});
+import 'dotenv/config';
+import { Telegraf, Markup } from 'telegraf';
+import { MongoClient } from 'mongodb';
+import http from 'http';
+import pLimit from 'p-limit';
 
-// Configuration et constantes
+// Chargement des variables d'environnement
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const MONGO_URI = process.env.MONGODB_URI;
-const DB_NAME = process.env.DB_NAME || 'solkah_traffic';
-const COLLECTION_NAME = process.env.COLLECTION_NAME || 'user_solkah';
+const DB_NAME = process.env.DB_NAME || 'solkahbot';
+const COLLECTION_NAME = process.env.COLLECTION_NAME || 'vxuser';
 const ADMIN_ID = parseInt(process.env.ADMIN_ID, 10);
-const CHANNEL_LINK = process.env.CHANNEL_LINK || 'https://t.me/+omaJ1VufdHs1NGZk';
+const CHANNEL_LINK = process.env.CHANNEL_LINK;
 
+// Vérification des .env
 if (!BOT_TOKEN || !MONGO_URI || !ADMIN_ID) {
   console.error('🔥 Variables .env manquantes ! Assurez-vous de définir BOT_TOKEN, MONGODB_URI, ADMIN_ID.');
   process.exit(1);
@@ -22,18 +20,23 @@ if (!BOT_TOKEN || !MONGO_URI || !ADMIN_ID) {
 
 // Initialisation du bot et de la DB
 const bot = new Telegraf(BOT_TOKEN);
-let dbClient;
+const client = new MongoClient(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 let usersCollection;
 
 async function connectDb() {
-  dbClient = new MongoClient(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
-  await dbClient.connect();
-  usersCollection = dbClient.db(DB_NAME).collection(COLLECTION_NAME);
-  console.log('✔️ Connecté à MongoDB');
+  try {
+    await client.connect();
+    usersCollection = client.db(DB_NAME).collection(COLLECTION_NAME);
+    console.log('✔️ Connecté à MongoDB');
+  } catch (err) {
+    console.error('❌ Erreur de connexion MongoDB:', err);
+    process.exit(1);
+  }
 }
 
-// Middleware: enregistrer l'utilisateur à la première interaction
+// Middleware: enregistrer l'utilisateur à chaque interaction
 bot.use(async (ctx, next) => {
+  if (!usersCollection) return next();
   if (ctx.from && ctx.message) {
     const userId = ctx.from.id;
     const now = new Date();
@@ -51,9 +54,7 @@ bot.start(async (ctx) => {
   const name = ctx.from.first_name || ctx.from.username || 'ami';
   return ctx.reply(
     `Salut ${name}! Bienvenue dans le programme hack de solkah.\nCliquez sur le bouton ci-dessous pour nous rejoindre et débloquer ton accès dans le canal réservé aux personnes ambitieuses et prêtes à réussir 💎`,
-    Markup.inlineKeyboard([
-      Markup.button.url('Rejoindre✅🤑', CHANNEL_LINK)
-    ])
+    Markup.inlineKeyboard([Markup.button.url('Rejoindre✅🤑', CHANNEL_LINK)])
   );
 });
 
@@ -72,10 +73,7 @@ bot.command('stats', async (ctx) => {
   ]);
 
   await ctx.replyWithHTML(
-    `📊 <b>Stats Solkah Traffic</b>:
-👥 Total utilisateurs: <b>${totalUsers}</b>
-📅 Ce mois-ci: <b>${monthCount}</b>
-🗓️ 3 derniers mois: <b>${last3Count}</b>`
+    `📊 <b>Stats Solkah Traffic</b>:\n👥 Total utilisateurs: <b>${totalUsers}</b>\n📅 Ce mois-ci: <b>${monthCount}</b>\n🗓️ 3 derniers mois: <b>${last3Count}</b>`
   );
 });
 
@@ -127,10 +125,7 @@ bot.action('broadcast_cancel', async (ctx) => {
 
 // Fonction de diffusion avec copyMessage et suivi des stats
 async function broadcastContent(ctx, session) {
-  if (!PLimit) {
-    PLimit = (await import('p-limit')).default;
-  }
-  const limit = PLimit(20);
+  const limit = pLimit(20);
   const usersCursor = usersCollection.find({}, { projection: { id: 1 } });
 
   let success = 0, failed = 0, sent = 0;
@@ -138,15 +133,13 @@ async function broadcastContent(ctx, session) {
   const statusMsg = await ctx.reply(`✅: 0 | ❌: 0 | 0 msg/s`);
 
   const tasks = [];
-  const total = session.total;
-
   while (await usersCursor.hasNext()) {
     const user = await usersCursor.next();
     tasks.push(limit(async () => {
       try {
         await ctx.telegram.copyMessage(user.id, session.content.chat_id, session.content.message_id);
         success++;
-      } catch (err) {
+      } catch {
         failed++;
       } finally {
         sent++;
@@ -178,25 +171,18 @@ async function broadcastContent(ctx, session) {
 }
 
 // Gestion des erreurs non capturées
-process.on('uncaughtException', (err) => {
+du process.on('uncaughtException', (err) => {
   console.error('Erreur non capturée:', err);
 });
 
-// Démarrage du bot
+// Démarrage du bot et du serveur HTTP
 (async () => {
   await connectDb();
   bot.launch();
   console.log('🤖 Bot Solkah démarré');
-})();
-// Démarrage du bot et création du serveur HTTP
-bot.launch()
-  .then(() => console.log('🚀 Bot démarré !'))
-  .catch(err => {
-    console.error('❌ Erreur de démarrage:', err);
-    process.exit(1);
-  });
 
-http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('Bot en ligne');
-}).listen(8080);
+  http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot en ligne');
+  }).listen(8080, () => console.log('🌐 Serveur HTTP en écoute sur le port 8080'));
+})();
