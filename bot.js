@@ -171,7 +171,7 @@ async function broadcastContent(ctx, session) {
 }
 
 // Gestion des erreurs non capturées
-du process.on('uncaughtException', (err) => {
+process.on('uncaughtException', (err) => {
   console.error('Erreur non capturée:', err);
 });
 
