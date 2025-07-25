@@ -53,7 +53,7 @@ bot.use(async (ctx, next) => {
 bot.start(async (ctx) => {
   const name = ctx.from.first_name || ctx.from.username || 'ami';
   return ctx.reply(
-    `Salut ${name}! Bienvenue dans le programme hack de solkah.\nCliquez sur le bouton ci-dessous pour  débloquer ton accès dans le canal réservé aux personnes ambitieuses et prêtes à réussir 💎`,
+    `Salut ${name}! Bienvenue dans le programme hack de solkah.\nClique vite sur le bouton ci-dessous pour profiter des hacks ultra rentables 💸\nLes places sont limitées, fais ta demande maintenant 👇👇👇👇`,
     Markup.inlineKeyboard([Markup.button.url('Rejoindre✅🤑', CHANNEL_LINK)])
   );
 });
