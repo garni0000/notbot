@@ -178,14 +178,9 @@ process.on('uncaughtException', (err) => {
 
 
 
-
-
-// keep alive section 
-http.createServer((req, res) => {
-  res.writeHead(200, {
-    'Content-Type': 'text/plain',
-    'Connection': 'keep-alive',
-    'Keep-Alive': 'timeout=5, max=1000'
-  });
-  res.end('Bot en ligne');
-}).listen(8080, () => console.log('🌐 Serveur HTTP en écoute sur le port 8080'));
+// --- Serveur HTTP ---
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end("Bot actif");
+});
+server.listen(8080, () => console.log("🌍 Port 8080"));
