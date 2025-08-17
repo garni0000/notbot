@@ -20,7 +20,7 @@ if (!BOT_TOKEN || !MONGO_URI || !ADMIN_ID) {
 
 // Initialisation du bot et de la DB
 const bot = new Telegraf(BOT_TOKEN);
-const client = new MongoClient(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+const client = new MongoClient(MONGO_URI);
 let usersCollection;
 
 async function connectDb() {
@@ -175,12 +175,26 @@ process.on('uncaughtException', (err) => {
   console.error('Erreur non capturée:', err);
 });
 
-
-
+// Initialisation et lancement du bot
+async function startBot() {
+  await connectDb();
+  
+  // Lancement du bot
+  await bot.launch();
+  console.log('🤖 Bot Telegram démarré avec succès!');
+  
+  // Graceful shutdown
+  process.once('SIGINT', () => bot.stop('SIGINT'));
+  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+}
 
 // --- Serveur HTTP ---
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
   res.end("Bot actif");
 });
-server.listen(8080, () => console.log("🌍 Port 8080"));
+
+server.listen(8080, () => {
+  console.log("🌍 Port 8080");
+  startBot().catch(console.error);
+});
