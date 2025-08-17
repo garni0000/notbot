@@ -175,14 +175,17 @@ process.on('uncaughtException', (err) => {
   console.error('Erreur non capturée:', err);
 });
 
-// Démarrage du bot et du serveur HTTP
-(async () => {
-  await connectDb();
-  bot.launch();
-  console.log('🤖 Bot Solkah démarré');
 
-  http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('Bot en ligne');
-  }).listen(8080, () => console.log('🌐 Serveur HTTP en écoute sur le port 8080'));
-})();
+
+
+
+
+// keep alive section 
+http.createServer((req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/plain',
+    'Connection': 'keep-alive',
+    'Keep-Alive': 'timeout=5, max=1000'
+  });
+  res.end('Bot en ligne');
+}).listen(8080, () => console.log('🌐 Serveur HTTP en écoute sur le port 8080'));
